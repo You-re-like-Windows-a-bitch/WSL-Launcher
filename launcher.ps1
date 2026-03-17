@@ -89,13 +89,38 @@ $staticFallback = @{
 
 function Show-Menu($distros) {
     Clear-Host
-    Write-Host "--- Gestionnaire WSL (liste dynamique) ---" -ForegroundColor Cyan
-    foreach ($key in $distros.Keys | Sort-Object { [int]$_ }) {
-        Write-Host "$($key) : $($distros[$key].Name) (Id: $($distros[$key].Id))"
+    # On définit les couleurs pour changer facilement si besoin
+    $c1 = "Cyan"
+    $c2 = "White"
+    $c3 = "Gray"
+
+    Write-Host "------------------------------------------------------------" -ForegroundColor $c1
+    Write-Host "             WSL MANAGER - Liste des Distributions" -ForegroundColor $c1
+    Write-Host "------------------------------------------------------------" -ForegroundColor $c1
+    Write-Host ""
+
+    # Tri et affichage
+    $sortedKeys = $distros.Keys | Sort-Object { [int]$_ }
+    foreach ($key in $sortedKeys) {
+        $item = $distros[$key]
+        if ($null -ne $item) {
+            # On prépare un affichage propre : [Num] Nom (ID)
+            Write-Host "  [" -NoNewline -ForegroundColor $c3
+            Write-Host "$key" -NoNewline -ForegroundColor Yellow
+            Write-Host "] " -NoNewline -ForegroundColor $c3
+            
+            # PadRight permet d'aligner les identifiants verticalement
+            $name = $item.Name.PadRight(25)
+            Write-Host "$name" -NoNewline -ForegroundColor $c2
+            Write-Host "" -ForegroundColor $c3
+        }
     }
-    Write-Host "R : Rafraîchir la liste en ligne"
-    Write-Host "Q : Quitter"
-    Write-Host "------------------------------------------"
+
+    Write-Host ""
+    Write-Host "------------------------------------------------------------" -ForegroundColor $c1
+    Write-Host "  [R] Rafraichir    [Q] Quitter" -ForegroundColor $c1
+    Write-Host "------------------------------------------------------------" -ForegroundColor $c1
+    Write-Host ""
 }
 
 # Vérifier si WSL est installé
@@ -150,7 +175,7 @@ while ($true) {
 
             if ($exit -eq 0) {
                 Write-Log "Commande d'installation terminée avec succès. Attente que la distribution apparaisse dans la liste..."
-                $timeout = 300; $elapsed = 0
+                $timeout = 1; $elapsed = 0
                 while ($elapsed -lt $timeout) {
                     Start-Sleep -Seconds 2
                     $elapsed += 2
