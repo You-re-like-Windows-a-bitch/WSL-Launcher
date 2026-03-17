@@ -1,13 +1,38 @@
 # Logs
 launcher.log
+*.log
+
+# Fichiers temporaires
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+*.sublime-workspace
+*.sublime-project
+
+# PowerShell
+*.ps1backup
+*.ps1tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Node
+node_modules/
+package-lock.json
+yarn.lock

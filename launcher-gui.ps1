@@ -213,8 +213,8 @@ $installBtn.Add_Click({
             $statusLabel.ForeColor = [System.Drawing.Color]::LimeGreen
             Write-Log "Distribution déjà installée - lancement"
         
-            # Lancer WSL
-            & wsl -d $selected.Id
+            # Lancer WSL dans une nouvelle fenêtre
+            Start-Process wsl -ArgumentList "-d $($selected.Id)" -WindowStyle Normal
         
             $statusLabel.Text = "Prêt"
         }
@@ -255,7 +255,7 @@ $installBtn.Add_Click({
                             $form.Refresh()
                         
                             Write-Log "Distribution détectée - lancement"
-                            & wsl -d $selected.Id
+                            Start-Process wsl -ArgumentList "-d $($selected.Id)" -WindowStyle Normal
                         
                             $statusLabel.Text = "Prêt"
                             break
