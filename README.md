@@ -43,22 +43,25 @@ WSL Launcher est un script PowerShell qui simplifie la gestion de Windows Subsys
 
 ## 🛠 Tech Stack
 
-| Technologie                                                                        | Usage                           |
-| :--------------------------------------------------------------------------------- | :------------------------------ |
-| ![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue?style=flat-square) | Langage principal du script     |
-| ![WSL](https://img.shields.io/badge/WSL-2.0+-purple?style=flat-square)             | Gestion des distributions Linux |
-| ![UTF-8](https://img.shields.io/badge/Encoding-UTF--8-green?style=flat-square)     | Logging et sortie colorée       |
+| Technologie                                                                        | Usage                            |
+| :--------------------------------------------------------------------------------- | :------------------------------- |
+| ![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue?style=flat-square) | Script principal pour Windows    |
+| ![Bash](https://img.shields.io/badge/Bash-4.0+-green?style=flat-square)            | Script alternatif pour Linux/Mac |
+| ![WSL](https://img.shields.io/badge/WSL-2.0+-purple?style=flat-square)             | Gestion des distributions Linux  |
+| ![UTF-8](https://img.shields.io/badge/Encoding-UTF--8-green?style=flat-square)     | Logging et sortie colorée        |
 
 ## 🚀 Installation & Lancement
 
-### 1. **Cloner le projet**
+### Pour Windows (PowerShell)
+
+#### 1. **Cloner le projet**
 
 ```bash
 git clone https://github.com/You-re-like-Windows-a-bitch/WSL-Launcher.git
 cd WSL-Launcher
 ```
 
-### 2. **Vérifier que WSL est installé**
+#### 2. **Vérifier que WSL est installé**
 
 ```powershell
 wsl --version
@@ -70,7 +73,7 @@ Si vous n'avez pas WSL, installez-le avec :
 wsl --install
 ```
 
-### 3. **Lancer le script**
+#### 3. **Lancer le script PowerShell**
 
 Ouvrez **PowerShell en tant qu'Administrateur** et exécutez :
 
@@ -85,7 +88,41 @@ Ou en une seule ligne :
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\launcher.ps1"
 ```
 
+### Pour Linux/Mac (Bash)
+
+#### 1. **Cloner le projet**
+
+```bash
+git clone https://github.com/You-re-like-Windows-a-bitch/WSL-Launcher.git
+cd WSL-Launcher
+```
+
+#### 2. **Rendre le script exécutable**
+
+```bash
+chmod +x launcher.sh
+```
+
+#### 3. **Lancer le script Bash**
+
+```bash
+./launcher.sh
+```
+
+> ⚠️ **Note** : Le script bash nécessite que WSL 2.0+ soit installé sur votre système Windows et accessible via la commande `wsl`.
+
 ## 📖 Utilisation
+
+### Version PowerShell vs Bash
+
+| Critère      | PowerShell              | Bash                    |
+| ------------ | ----------------------- | ----------------------- |
+| Plateforme   | Windows (natif)         | Linux, Mac, WSL         |
+| Installation | Aucune dépendance       | Bash 4.0+ requis        |
+| Couleurs     | ✅ Complètes            | ✅ Complètes            |
+| Logging      | ✅ Oui (`launcher.log`) | ✅ Oui (`launcher.log`) |
+| Performance  | Rapide                  | Très rapide             |
+| Utilisation  | `.\launcher.ps1`        | `./launcher.sh`         |
 
 ### Sélectionner une distribution
 
