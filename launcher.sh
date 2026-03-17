@@ -12,7 +12,10 @@ write_log() {
     local level="${2:-INFO}"
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     local log_line="${timestamp} [${level}] ${message}"
-    echo "$log_line" | tee -a "$LOG_PATH"
+    echo "$log_line" >> "$LOG_PATH"
+    # Ne pas afficher sur stdout pour éviter d'interférer avec l'interface
+    # Sauf si c'est vraiment nécessaire (avec une variable)
+    [ "$SHOW_LOGS" = "1" ] && echo "$log_line"
 }
 
 write_log "=== Nouvelle session de lancement WSL ==="
@@ -22,7 +25,8 @@ get_online_distros() {
     write_log "Récupération des distributions disponibles via 'wsl --list --online'..."
     
     local raw_output
-    raw_output=$(wsl --list --online 2>&1)
+    # Récupérer et nettoyer l'output
+    raw_output=$(wsl --list --online 2>&1 | sed 's/\r//g' | sed 's/[^[:print:]\n]//g')
     local exit_code=$?
     
     if [ $exit_code -ne 0 ] || [ -z "$raw_output" ]; then
@@ -31,64 +35,48 @@ get_online_distros() {
     fi
     
     # Traiter le output
-    local -A dict
     local counter=1
-    local line_num=0
     
     while IFS= read -r line; do
-        line_num=$((line_num + 1))
+        # Trim la ligne
+        line=$(echo "$line" | xargs)
+        [ -z "$line" ] && continue
         
         # Ignorer les lignes d'en-tête / aide
-        if [[ $line =~ ^(NAME|NOM|FRIENDLY|FRIENDLY\ NAME|INSTALLER|AIDE|HELP|USAGE|UTILISATION) ]]; then
+        if [[ $line =~ ^(NAME|FRIENDLY) ]]; then
             continue
         fi
         if [[ $line =~ ^[-]{2,} ]]; then
             continue
         fi
-        if [[ $line =~ ^(Voici\ la\ liste|Pour\ installer|Use\ wsl\ --install) ]]; then
+        if [[ $line =~ ^(Voici|Pour|Use|Installer) ]]; then
             continue
         fi
         
-        # Trim la ligne
-        line=$(echo "$line" | xargs)
-        [ -z "$line" ] && continue
-        
-        # Extraire ID et friendly name
+        # Extraire ID (premier token) et friendly name (reste)
         local id_candidate=$(echo "$line" | awk '{print $1}')
-        local friendly_candidate=$(echo "$line" | cut -d' ' -f2- || echo "$id_candidate")
+        local friendly_candidate=$(echo "$line" | cut -d' ' -f2-)
+        
+        # Si pas de friendly name, utiliser l'ID
+        [ -z "$friendly_candidate" ] && friendly_candidate="$id_candidate"
         
         # Valider l'ID (caractères acceptés)
         if ! [[ $id_candidate =~ ^[A-Za-z0-9._-]+$ ]]; then
             continue
         fi
         
-        # Éviter les doublons (simple vérification)
-        local found=0
-        for key in "${!dict[@]}"; do
-            if [[ "${dict[$key]}" == *"id=$id_candidate"* ]]; then
-                found=1
-                break
-            fi
-        done
-        [ $found -eq 1 ] && continue
-        
-        # Ajouter à la liste
-        dict[$counter]="name=$friendly_candidate|id=$id_candidate"
+        # Output au format : counter|name|id
+        echo "${counter}|${friendly_candidate}|${id_candidate}"
         counter=$((counter + 1))
         
         # Limite raisonnable
         [ $counter -gt 200 ] && break
     done <<< "$raw_output"
     
-    if [ ${#dict[@]} -eq 0 ]; then
+    if [ $counter -eq 1 ]; then
         write_log "Aucune distribution analysée depuis la sortie en ligne." "WARN"
         return 1
     fi
-    
-    # Afficher la liste (pour récupération externe)
-    for key in "${!dict[@]}"; do
-        echo "${key}|${dict[$key]}"
-    done | sort -t'|' -k1 -n
 }
 
 # Définir les distributions statiques (fallback)
@@ -101,7 +89,7 @@ STATIC_FALLBACK[5]="name=Alpine Linux|id=Alpine"
 
 # Fonction pour afficher le menu
 show_menu() {
-    local -n distros=$1
+    local -a distros=("${@}")
     
     clear
     
@@ -119,8 +107,9 @@ show_menu() {
     
     # Afficher les distributions (déjà triées)
     for entry in "${distros[@]}"; do
+        # Extraire les parties : counter|name|id
         local key=$(echo "$entry" | cut -d'|' -f1)
-        local name=$(echo "$entry" | cut -d'|' -f2 | cut -d'=' -f2)
+        local name=$(echo "$entry" | cut -d'|' -f2)
         
         printf "${c3}  [${yellow}%s${c3}] ${c2}%-25s${nc}\n" "$key" "$name"
     done
@@ -142,21 +131,28 @@ fi
 
 # Récupération initiale des distributions
 declare -a distros
-distro_output=$(get_online_distros)
-if [ $? -eq 0 ] && [ -n "$distro_output" ]; then
+distro_output=$(get_online_distros 2>/dev/null)
+exit_code=$?
+
+if [ $exit_code -eq 0 ] && [ -n "$distro_output" ]; then
     while IFS= read -r line; do
-        distros+=("$line")
+        [ -n "$line" ] && distros+=("$line")
     done <<< "$distro_output"
-else
+fi
+
+# Si la liste est vide, utiliser le fallback
+if [ ${#distros[@]} -eq 0 ]; then
     write_log "Utilisation de la liste statique de fallback." "WARN"
-    for key in "${!STATIC_FALLBACK[@]}"; do
-        distros+=("${key}|${STATIC_FALLBACK[$key]}")
-    done
+    distros[0]="1|Ubuntu (latest)|Ubuntu"
+    distros[1]="2|Ubuntu 22.04 LTS|Ubuntu-22.04"
+    distros[2]="3|Debian|Debian"
+    distros[3]="4|Kali Linux|kali-linux"
+    distros[4]="5|Alpine Linux|Alpine"
 fi
 
 # Boucle principale
 while true; do
-    show_menu distros[@]
+    show_menu "${distros[@]}"
     read -p "Choisis une option: " choice
     choice=$(echo "$choice" | tr '[:lower:]' '[:upper:]')
     
@@ -181,15 +177,15 @@ while true; do
     fi
     
     # Vérifier si le choix existe
-    local found_distro=""
-    local distro_id=""
-    local distro_name=""
+    found_distro=""
+    distro_id=""
+    distro_name=""
     
     for entry in "${distros[@]}"; do
-        local key=$(echo "$entry" | cut -d'|' -f1)
+        key=$(echo "$entry" | cut -d'|' -f1)
         if [ "$key" = "$choice" ]; then
-            distro_name=$(echo "$entry" | cut -d'|' -f2 | cut -d'=' -f2)
-            distro_id=$(echo "$entry" | cut -d'|' -f3 | cut -d'=' -f2)
+            distro_name=$(echo "$entry" | cut -d'|' -f2)
+            distro_id=$(echo "$entry" | cut -d'|' -f3)
             found_distro=1
             break
         fi
@@ -204,7 +200,6 @@ while true; do
     write_log "Option sélectionnée : $distro_name (Id: $distro_id)"
     
     # Vérifier si la distribution est déjà installée
-    local installed_list
     installed_list=$(wsl --list --quiet 2>/dev/null)
     
     if echo "$installed_list" | grep -q "$distro_id"; then
@@ -215,9 +210,8 @@ while true; do
         write_log "Début de l'installation de $distro_name (wsl --install -d $distro_id)"
         echo "Installation de $distro_name... (Cela peut prendre quelques minutes)"
         
-        local output
         output=$(wsl --install -d "$distro_id" 2>&1)
-        local exit_code=$?
+        exit_code=$?
         
         if [ -n "$output" ]; then
             while IFS= read -r line; do
@@ -227,8 +221,8 @@ while true; do
         
         if [ $exit_code -eq 0 ]; then
             write_log "Commande d'installation terminée avec succès. Attente que la distribution apparaisse dans la liste..."
-            local timeout=1
-            local elapsed=0
+            timeout=1
+            elapsed=0
             
             while [ $elapsed -lt $timeout ]; do
                 sleep 2
